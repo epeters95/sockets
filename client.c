@@ -13,6 +13,53 @@ void DieWithError(const char *errorMessage) /* External error handling function 
     exit(1);
 }
 
+void client(const char* servIP, const char* echoString, unsigned short echoServPort)
+{
+        int sock;                        /* Socket descriptor */
+        struct sockaddr_in echoServAddr; /* Echo server address */
+        struct sockaddr_in fromAddr;     /* Source address of echo */
+        unsigned int fromSize;           /* In-out of address size for recvfrom() */
+        char echoBuffer[MAXBUF + 1];      /* Buffer for receiving echoed string */
+        int echoStringLen;               /* Length of string to echo */
+        int respStringLen;               /* Length of received response */
+
+        if ((echoStringLen = strlen(echoString)) > MAXBUF)  /* Check input length */
+                DieWithError("Echo word too long");
+
+        printf("%s\n",servIP );
+        /* Create a datagram/UDP socket */
+        if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+                DieWithError("socket() failed");
+
+        /* Construct the server address structure */
+        memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
+        echoServAddr.sin_family = AF_INET;                 /* Internet addr family */
+        echoServAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
+        echoServAddr.sin_port = htons(echoServPort);     /* Server port */
+
+        /* Send the string to the server */
+ if (sendto(sock, echoString, echoStringLen, 0, (struct sockaddr *)
+                &echoServAddr, sizeof(echoServAddr)) != echoStringLen)
+                DieWithError("sendto() sent a different number of bytes than expected");
+        /* Recv a response */
+        fromSize = sizeof(fromAddr);
+        if ((respStringLen = recvfrom(sock, echoBuffer, MAXBUF, 0,
+                (struct sockaddr *) &fromAddr, &fromSize)) != echoStringLen)
+                DieWithError("recvfrom() failed");
+
+        if (echoServAddr.sin_addr.s_addr != fromAddr.sin_addr.s_addr)
+        {
+                fprintf(stderr, "Error: received a packet from unknown source.\n");
+                exit(1);
+        }
+
+        /* null-terminate the received data */
+        echoBuffer[respStringLen] = '\0';
+        printf("Received: %s\n", echoBuffer);    /* Print the echoed arg */
+
+        close(sock);
+        exit(0);
+}
 int main(int argc, char *argv[])
 {
     int sock;                        /* Socket descriptor */

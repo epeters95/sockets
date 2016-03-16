@@ -21,7 +21,7 @@
 ///////////////////////
 // message types, for all files
 #define INFORM_UPDATE 1
-#define QUERY 2
+#define QUERY_CONTENT 2
 #define EXIT 3
 
 ///////////////////////////
@@ -29,34 +29,35 @@
 // ONLY used for GET request
 struct request {
     char hostname[MAX_HOSTNAME];    // client's host name
-    char client[16];    // client ip address
-    int req;            // request number
+    char client[16];                // client ip address
+    int req;                        // request number
     char requested_file[MAX_FILENAME_LEN];  // filename
-}
+};
 
 struct response {
     char file[MAXBUF - 4];      // 124 byte files allowed
-    int status;     // e.g. 200, 400, 404, 505
-}
+    int status;                 // e.g. 200, 400, 404, 505
+};
+
 //////////////////////////
 // structs for directory server part
-struct request {
-    int message_type;
-    char hostname[MAX_HOSTNAME];
-    char client[16];
-    char content[MAX_LINESIZE];     // will contain entry if message type is Inform and Update
-    int req;    // request number
-}
+// struct request {
+//     int message_type;
+//     char hostname[MAX_HOSTNAME];
+//     char client[16];
+//     char content[MAX_LINESIZE];     // will contain entry if message type is Inform and Update
+//     int req;    // request number
+// };
 
-struct response {
-    char status[13];        // 200 (OK) or 400 (ERROR)
-    char content[MAX_LINES][MAX_LINESIZE];   // array of "hostname:filename.txt:size" strings
-}
-
+// struct response {
+//     char status[13];        // 200 (OK) or 400 (ERROR)
+//     char content[MAX_LINES][MAX_LINESIZE];   // array of "hostname:filename.txt:size" strings
+// };
 
 
 ///////////////////////
 // server's filename directory
+int lastentry = 0;
 char directory[MAX_ENTRIES][MAX_FILENAME_LEN];
 // arr of strings "hostname:filename:size"
 
@@ -73,53 +74,7 @@ void DieWithError(const char *errorMessage) /* External error handling function 
     exit(1);
 }
 
-// void client(const char* servIP, const char* echoString, unsigned short echoServPort)
-// {
-//         int sock;                        /* Socket descriptor */
-//         struct sockaddr_in echoServAddr; /* Echo server address */
-//         struct sockaddr_in fromAddr;     /* Source address of echo */
-//         unsigned int fromSize;           /* In-out of address size for recvfrom() */
-//         char echoBuffer[MAXBUF + 1];      /* Buffer for receiving echoed string */
-//         int echoStringLen;               /* Length of string to echo */
-//         int respStringLen;               /* Length of received response */
 
-//         if ((echoStringLen = strlen(echoString)) > MAXBUF)  /* Check input length */
-//                 DieWithError("Echo word too long");
-
-//         printf("%s\n",servIP );
-//         /* Create a datagram/UDP socket */
-//         if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
-//                 DieWithError("socket() failed");
-
-//         /* Construct the server address structure */
-//         memset(&echoServAddr, 0, sizeof(echoServAddr));    /* Zero out structure */
-//         echoServAddr.sin_family = AF_INET;                 /* Internet addr family */
-//         echoServAddr.sin_addr.s_addr = inet_addr(servIP);  /* Server IP address */
-//         echoServAddr.sin_port = htons(echoServPort);     /* Server port */
-
-//         /* Send the string to the server */
-//  if (sendto(sock, echoString, echoStringLen, 0, (struct sockaddr *)
-//                 &echoServAddr, sizeof(echoServAddr)) != echoStringLen)
-//                 DieWithError("sendto() sent a different number of bytes than expected");
-//         /* Recv a response */
-//         fromSize = sizeof(fromAddr);
-//         if ((respStringLen = recvfrom(sock, echoBuffer, MAXBUF, 0,
-//                 (struct sockaddr *) &fromAddr, &fromSize)) != echoStringLen)
-//                 DieWithError("recvfrom() failed");
-
-//         if (echoServAddr.sin_addr.s_addr != fromAddr.sin_addr.s_addr)
-//         {
-//                 fprintf(stderr, "Error: received a packet from unknown source.\n");
-//                 exit(1);
-//         }
-
-//         /* null-terminate the received data */
-//         echoBuffer[respStringLen] = '\0';
-//         printf("Received: %s\n", echoBuffer);    /* Print the echoed arg */
-
-//         close(sock);
-//         exit(0);
-// }
 
 void server(unsigned short Port)
 {
@@ -149,58 +104,79 @@ void server(unsigned short Port)
                 /* Set the size of the in-out parameter */
                 cliAddrLen = sizeof(echoClntAddr);
 
-                /* Block until receive message from a client */
-                if ((recvMsgSize = recvfrom(sock, echoBuffer, MAXBUF, 0,
-                        (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
-                        DieWithError("recvfrom() failed");
+                // /* Block until receive message from a client */
+                // struct request r;
+                // if ((recvMsgSize = recvfrom(sock, &r, MAXBUF, 0,
+                //         (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
+                //         DieWithError("recvfrom() failed");
 
-                printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
+                // if (r.message_type == INFORM_UPDATE) {
 
-                /* Send received datagram back to the client */
-                // if (sendto(sock, echoBuffer, recvMsgSize, 0,
-                //         (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize)
-                //         DieWithError("sendto() sent a different number of bytes than expected");
+                //     // perform inform and update on server directory
+                // }
+                // else if (r.message_type == QUERY_CONTENT) {
+
+                //     // query the directory for files from a given host
+                // }
+                // else if (r.message_type == QUIT) {
+
+                //     // remove requesting client's entries from directory
+                // }
+
+                
+        /* Block until receive message from a client */
+        if ((recvMsgSize = recvfrom(sock, echoBuffer, MAXBUF, 0,
+            (struct sockaddr *) &echoClntAddr, &cliAddrLen)) < 0)
+            DieWithError("recvfrom() failed");
+
+        printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
+
+        /* Send received datagram back to the client */
+        if (sendto(sock, echoBuffer, recvMsgSize, 0, 
+             (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != recvMsgSize)
+            DieWithError("sendto() sent a different number of bytes than expected");
+
         }
+}
+void HandleTCPClient(int clntSocket)
+{
+    char echoBuffer[MAXBUF];        /* Buffer for echo string */
+    int recvMsgSize;                    /* Size of received message */
+
+    /* Receive message from client */
+    if ((recvMsgSize = recv(clntSocket, echoBuffer, MAXBUF, 0)) < 0)
+        DieWithError("recv() failed");
+
+    /* Send received string and receive again until end of transmission */
+    while (recvMsgSize > 0)      /* zero indicates end of transmission */
+    {
+
+        // now send the file here.  You would actually check for file, read, and send as a response
+        char responseBuffer[50000];
+        strcpy(responseBuffer, "Thie is file content A...\n");
+        int responseBufferSize = strlen(responseBuffer);
+
+        /* Echo message back to client */
+        if (send(clntSocket, responseBuffer, responseBufferSize, 0) != responseBufferSize)
+            DieWithError("send() failed");
+
+        /* See if there is more data to receive */
+        //if ((recvMsgSize = recv(clntSocket, echoBuffer, MAXBUF, 0)) < 0)
+        //    DieWithError("recv() failed");
+
+    // You could wait for more command, but, in this case, we can just terminate the socket
+
+    break;
+    }
+
+    close(clntSocket);    /* Close client socket */
 }
 int main()
 {
-        // int option;
-        // unsigned short serverPort;
-        // char servIPaddress[16];
-        // char message[MAXBUF];
-        // unsigned short echoPort;
-        // printf("Welcome, what would you like to do?\n 1. Inform and update \n 2. Query for content \n 3. Exit \n");
-        // scanf("%d", &option);
-        // printf("option is: %d \n", option);
-
-        // while(option != 3)
-        // {
-        //         if(option == 1)
-        //         {
-        //                 printf("Inform and update\n");
-        //                 printf("Please enter a server IP address, message, and port number \n");
-
-        //                 struct request;
-        //                 request->message = "";
-
-        //                 scanf("%s %s %hu", &servIPaddress, &message, &echoPort);
-        //                 printf("it scanned\n");
-        //                 client(servIPaddress, message, echoPort);
-        //         }
-        //         else if(option == 2)
-        //         {
-        //                 printf("Query for content\n");
+        unsigned short serverPort;
                         printf("please enter a server port ");
                         scanf("%hu", &serverPort);
                         server(serverPort);
-        //         }
-        //         else
-        //         {
-        //                 printf("Please enter a valid option\n");
-        //         }
-        //         printf("What would you like to do? \n");
-        //         scanf("%d", &option);
-        // }
         return 0;
 }
                                    
